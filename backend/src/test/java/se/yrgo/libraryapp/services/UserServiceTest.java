@@ -2,9 +2,14 @@ package se.yrgo.libraryapp.services;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -13,6 +18,7 @@ import se.yrgo.libraryapp.dao.UserDao;
 import se.yrgo.libraryapp.entities.LoginInfo;
 import se.yrgo.libraryapp.entities.UserId;
 
+import java.sql.SQLException;
 import java.util.Optional;
 
 @MockitoSettings(strictness = Strictness.STRICT_STUBS)
@@ -38,4 +44,36 @@ class UserServiceTest {
         assertThat(userService.validate(username,
                 password)).isEqualTo(Optional.of(id));
     }
+
+    @ParameterizedTest
+    @SuppressWarnings("deprecation")
+    @CsvSource(value = {
+            "bosseTheMan, Bosse Bredsladd, 123password",
+            "some_aristocat, Thomas O'Malley, password123"
+    })
+    void registerNewUserWithValidParams(String name, String realname, String password) throws SQLException {
+        when(userDao.insertUserAndRole(anyString(), anyString(), anyString()))
+                .thenReturn(true);
+
+        UserService userService = new UserService(
+                userDao, org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance());
+        assertThat(userService.register(name, realname, password)).isTrue();
+    }
+
+    @ParameterizedTest
+    @SuppressWarnings("deprecation")
+    @CsvSource(value = {
+            " , , ",
+            "null, null, null"
+    }, nullValues = "null")
+    void registerNewUserWithInvalidParams(String name, String realname, String password) throws SQLException {
+        when(userDao.insertUserAndRole(anyString(), anyString(), anyString()))
+                .thenReturn(true);
+
+        UserService userService = new UserService(
+                userDao, org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance());
+        assertThat(userService.register(name, realname, password)).isFalse();
+    }
+
+
 }
