@@ -1,15 +1,17 @@
 package se.yrgo.libraryapp.dao;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.sql.*;
 import java.util.Optional;
 import javax.sql.DataSource;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -91,4 +93,25 @@ class UserDaoTest {
         UserDao userDao = new UserDao(ds);
         assertThat(userDao.get(username)).isEmpty();
     }
+
+
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "-1",
+            "abc"
+    })
+    @NullAndEmptySource
+    void getUserByInvalidIdParam(String id) throws SQLException {
+        when(ds.getConnection()).thenReturn(conn);
+        when(conn.createStatement()).thenReturn(stmt);
+
+        doThrow(new SQLException()).when(stmt).executeQuery(anyString());
+
+        UserDao userDao = new UserDao(ds);
+        assertThat(userDao.get(id)).isEqualTo(Optional.empty());
+    }
+
+    //Todo: Somehow check for SQL injection
+
 }
