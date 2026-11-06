@@ -39,13 +39,17 @@ public class UserService {
     }
 
     public boolean register(String name, String realname, String password) {
+        if (name == null || name.isEmpty()) return false;
+        if (realname == null || realname.isEmpty()) return false;
+        if (password == null || password.isEmpty()) return false;
+
         String passwordHash = encoder.encode(password);
 
         // handle names like Ian O'Toole
         realname = realname.replace("'", "\\'");
 
         try {
-            return userDao.insertUserAndRole(name, realname,passwordHash);
+            return userDao.insertUserAndRole(name, realname, passwordHash);
         } catch (SQLException ex) {
             logger.error("Unable to register user " + name, ex);
             return false;
