@@ -55,4 +55,16 @@ public class UserService {
             return false;
         }
     }
+
+    public boolean isNameAvailable(String name) {
+        if (name == null || name.trim().length() < 3) {
+            return false;
+        }
+
+        Optional<User> existingUser = userDao.getByName(name);
+        if (existingUser.isPresent() && existingUser.get().getName().equals(name)) {
+            return false;
+        }
+        return true;
+    }
 }
