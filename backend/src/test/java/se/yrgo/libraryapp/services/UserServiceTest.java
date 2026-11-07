@@ -17,6 +17,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import se.yrgo.libraryapp.dao.UserDao;
 import se.yrgo.libraryapp.entities.LoginInfo;
+import se.yrgo.libraryapp.entities.User;
 import se.yrgo.libraryapp.entities.UserId;
 import se.yrgo.libraryapp.validators.RealName;
 
@@ -89,5 +90,35 @@ class UserServiceTest {
         assertThat(userService.register(name, realname, password)).isFalse();
     }
 
+    @Test
+    void isNameAvailable_WithAvailableName() {
+        String name = "bosse1";
+        when(userDao.getByName(name)).thenReturn(Optional.empty());
+        UserService userService = new UserService(
+                userDao, org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance());
 
+        assertThat(userService.isNameAvailable(name)).isTrue();
+    }
+
+    @Test
+    void isNameAvailable_WithUnavailableName() {
+        String name = "bosse1";
+        when(userDao.getByName(name)).thenReturn(
+                Optional.of(new User(UserId.of(1), name, "Bosse Bredsladd")));
+
+        UserService userService = new UserService(
+                userDao, org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance());
+
+        assertThat(userService.isNameAvailable(name)).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = "bo     ")
+    @NullAndEmptySource
+    void isNameAvailable_WithInvalidParam(String name) {
+        UserService userService = new UserService(
+                userDao, org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance());
+
+        assertThat(userService.isNameAvailable(name)).isFalse();
+    }
 }
