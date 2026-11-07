@@ -3,6 +3,7 @@ package se.yrgo.libraryapp.services;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import se.yrgo.libraryapp.dao.UserDao;
 import se.yrgo.libraryapp.entities.LoginInfo;
 import se.yrgo.libraryapp.entities.UserId;
+import se.yrgo.libraryapp.validators.RealName;
 
 import java.sql.SQLException;
 import java.util.Optional;
@@ -60,6 +62,21 @@ class UserServiceTest {
         assertThat(userService.register(name, realname, password)).isTrue();
     }
 
+//    @Test
+//    void registerUser_CorrectlyInsertsRealnameWithSpecialChars() throws SQLException {
+//        String realnameWithApostrophe = "Thomas O'Malley";
+//        String nameCopy = "Thomas O'Malley";
+//
+//        when(userDao.insertUserAndRole(anyString(), realnameWithApostrophe, anyString()))
+//                .thenReturn(true);
+//
+//        UserService userService = new UserService(
+//                userDao, org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance());
+//        userService.register("user123", realnameWithApostrophe, "password123");
+//
+//        verify(RealName).
+//    }
+
     @ParameterizedTest
     @SuppressWarnings("deprecation")
     @CsvSource(value = {
@@ -67,9 +84,6 @@ class UserServiceTest {
             "null, null, null"
     }, nullValues = "null")
     void registerNewUserWithInvalidParams(String name, String realname, String password) throws SQLException {
-        when(userDao.insertUserAndRole(anyString(), anyString(), anyString()))
-                .thenReturn(true);
-
         UserService userService = new UserService(
                 userDao, org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance());
         assertThat(userService.register(name, realname, password)).isFalse();
