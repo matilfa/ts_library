@@ -63,8 +63,9 @@ class UserServiceTest {
         assertThat(userService.register(name, realname, password)).isTrue();
     }
 
+//    TODO:
 //    @Test
-//    void registerUser_CorrectlyInsertsRealnameWithSpecialChars() throws SQLException {
+//    void registerUser_CorrectlyInsertsRealnameWithApostrophe() throws SQLException {
 //        String realnameWithApostrophe = "Thomas O'Malley";
 //        String nameCopy = "Thomas O'Malley";
 //
@@ -113,7 +114,7 @@ class UserServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = "bo     ")
+    @ValueSource(strings = "bo     ") //TODO: a string like "bo       sse" will pass, fix in code
     @NullAndEmptySource
     void isNameAvailable_WithInvalidParam(String name) {
         UserService userService = new UserService(
