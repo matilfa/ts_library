@@ -7,7 +7,13 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import se.yrgo.libraryapp.App;
+import se.yrgo.libraryapp.entities.LoginInfo;
+import se.yrgo.libraryapp.entities.Role;
+import se.yrgo.libraryapp.entities.UserId;
+import se.yrgo.libraryapp.entities.forms.LoginData;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -50,9 +56,53 @@ public class LoginLogoutIntegrationTest {
             HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
             assertEquals("", resp.body());
             assertEquals(HttpURLConnection.HTTP_OK, resp.statusCode());
-        }
-        catch (IllegalArgumentException|InterruptedException ex) {
+        } catch (IllegalArgumentException | InterruptedException ex) {
             fail(ex);
         }
     }
+
+    @Test
+    public void loginAndLogout(int serverPort) throws IOException, InterruptedException {
+        LoginData loginData = new LoginData(
+                "test", "yrgoP4ssword");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json = objectMapper.writeValueAsString(loginData);
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest loginRequest = HttpRequest.newBuilder(URI.create("http://localhost:" +
+                        serverPort + "/login"))
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+
+        HttpRequest logoutRequest = HttpRequest.newBuilder(URI.create("http://localhost:" +
+                        serverPort + "/logout"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        try {
+            HttpResponse<String> respLogin = client.send(loginRequest, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(HttpURLConnection.HTTP_OK, respLogin.statusCode());
+//            assertTrue(checkIfLoggedIn(client, serverPort));
+
+            HttpResponse<String> respLogout = client.send(logoutRequest, HttpResponse.BodyHandlers.ofString());
+            assertEquals(HttpURLConnection.HTTP_OK, respLogin.statusCode());
+
+        } catch (IllegalArgumentException | InterruptedException ex) {
+            fail(ex);
+        }
+
+    }
+
+//    private boolean checkIfLoggedIn(HttpClient client, int serverPort) throws IOException, InterruptedException {
+//        HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" +
+//                        serverPort + "/login/check")).build();
+//
+//        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+//
+//        return resp.statusCode() == HttpURLConnection.HTTP_OK &&
+//                resp.body().contains(Role.USER.toString());
+//    }
 }
