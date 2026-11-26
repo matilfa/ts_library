@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -173,4 +174,15 @@ public class LoginLogoutIntegrationTest {
         }
     }
 
+    @Test
+    public void registerUserWithInvalidParams(int serverPort) throws IOException {
+        String json = getUserDataAsJsonString("", "  ", null);
+
+        try {
+            var resp = sendPostRequest(serverPort, REGISTER_ENDPOINT, json);
+            assertTrue(resp.body().contains("false"));
+        } catch (IllegalArgumentException | InterruptedException ex) {
+            fail(ex);
+        }
+    }
 }
