@@ -7,12 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import se.yrgo.libraryapp.App;
-import se.yrgo.libraryapp.entities.LoginInfo;
-import se.yrgo.libraryapp.entities.Role;
-import se.yrgo.libraryapp.entities.UserId;
 import se.yrgo.libraryapp.entities.forms.LoginData;
 
 import java.io.IOException;
@@ -47,13 +43,42 @@ public class LoginLogoutIntegrationTest {
         System.clearProperty("db.password");
     }
 
+    private HttpResponse<String> sendHttpRequest(HttpRequest req) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        return client.send(req, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> sendGetRequest(int serverPort,
+                                                String endpoint) throws IOException, InterruptedException {
+        HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" +
+                serverPort + endpoint)).build();
+
+        return sendHttpRequest(req);
+    }
+
+    private HttpResponse<String> sendPostRequest(int serverPort,
+                                                 String endpoint,
+                                                 String jsonBody) throws IOException, InterruptedException {
+        HttpRequest.BodyPublisher bodyPublisher = null;
+
+        if (jsonBody == null || jsonBody.isEmpty()) {
+            bodyPublisher = HttpRequest.BodyPublishers.noBody();
+        } else {
+            bodyPublisher = HttpRequest.BodyPublishers.ofString(jsonBody);
+        }
+        HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" +
+                        serverPort + endpoint))
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .POST(bodyPublisher)
+                .build();
+
+        return sendHttpRequest(req);
+    }
+
     @Test
     public void alwaysOkToLogout(int serverPort) throws IOException {
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" +
-                    serverPort + "/logout")).build();
-            HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+            var resp = sendGetRequest(serverPort, "/logout");
             assertEquals("", resp.body());
             assertEquals(HttpURLConnection.HTTP_OK, resp.statusCode());
         } catch (IllegalArgumentException | InterruptedException ex) {
@@ -62,34 +87,23 @@ public class LoginLogoutIntegrationTest {
     }
 
     @Test
-    public void loginAndLogout(int serverPort) throws IOException, InterruptedException {
+    public void loginAndLogout(int serverPort) throws IOException {
         LoginData loginData = new LoginData(
                 "test", "yrgoP4ssword");
 
         ObjectMapper objectMapper = new ObjectMapper();
         String json = objectMapper.writeValueAsString(loginData);
 
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest loginRequest = HttpRequest.newBuilder(URI.create("http://localhost:" +
-                        serverPort + "/login"))
-                .header("Content-Type", "application/json; charset=UTF-8")
-                .POST(HttpRequest.BodyPublishers.ofString(json))
-                .build();
-
-        HttpRequest logoutRequest = HttpRequest.newBuilder(URI.create("http://localhost:" +
-                        serverPort + "/logout"))
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .build();
+        try {
+            var loginResponse = sendPostRequest(serverPort, "/login", json);
+            assertEquals(HttpURLConnection.HTTP_OK, loginResponse.statusCode());
+        } catch (IllegalArgumentException | InterruptedException e) {
+            fail(e);
+        }
 
         try {
-            HttpResponse<String> respLogin = client.send(loginRequest, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(HttpURLConnection.HTTP_OK, respLogin.statusCode());
-//            assertTrue(checkIfLoggedIn(client, serverPort));
-
-            HttpResponse<String> respLogout = client.send(logoutRequest, HttpResponse.BodyHandlers.ofString());
-            assertEquals(HttpURLConnection.HTTP_OK, respLogin.statusCode());
-
+            var logoutResponse = sendPostRequest(serverPort, "/logout", null);
+            assertEquals(HttpURLConnection.HTTP_OK, logoutResponse.statusCode());
         } catch (IllegalArgumentException | InterruptedException ex) {
             fail(ex);
         }

@@ -26,7 +26,7 @@ import se.yrgo.libraryapp.entities.UserId;
 @Testcontainers
 public class UserDaoIntegrationTest {
     @Container
-    private static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0.29");
+    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0.29");
     private static DataSource ds;
 
     @BeforeAll
