@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import se.yrgo.libraryapp.App;
 import se.yrgo.libraryapp.entities.forms.LoginData;
@@ -28,6 +29,10 @@ public class LoginLogoutIntegrationTest {
     @Container
     private static MySQLContainer<?> mySQLContainer = new MySQLContainer<>
             ("mysql:8.0.29");
+
+    private static final String LOGIN_ENDPOINT = "/login";
+    private static final String LOGOUT_ENDPOINT = "/logout";
+
 
     public static App createApp() {
         System.setProperty("db.url", mySQLContainer.getJdbcUrl());
@@ -78,7 +83,7 @@ public class LoginLogoutIntegrationTest {
     @Test
     public void alwaysOkToLogout(int serverPort) throws IOException {
         try {
-            var resp = sendGetRequest(serverPort, "/logout");
+            var resp = sendGetRequest(serverPort, LOGOUT_ENDPOINT);
             assertEquals("", resp.body());
             assertEquals(HttpURLConnection.HTTP_OK, resp.statusCode());
         } catch (IllegalArgumentException | InterruptedException ex) {
@@ -86,37 +91,47 @@ public class LoginLogoutIntegrationTest {
         }
     }
 
-    @Test
-    public void loginAndLogout(int serverPort) throws IOException {
+    private String getUserLoginDataAsJsonString(String username, String password) throws JsonProcessingException {
         LoginData loginData = new LoginData(
-                "test", "yrgoP4ssword");
+                username, password);
 
         ObjectMapper objectMapper = new ObjectMapper();
-        String json = objectMapper.writeValueAsString(loginData);
+        return objectMapper.writeValueAsString(loginData);
+    }
+
+    @Test
+    public void loginAndLogout(int serverPort) throws IOException {
+        String json = getUserLoginDataAsJsonString("test", "yrgoP4ssword");
 
         try {
-            var loginResponse = sendPostRequest(serverPort, "/login", json);
+            var loginResponse = sendPostRequest(serverPort, LOGIN_ENDPOINT, json);
             assertEquals(HttpURLConnection.HTTP_OK, loginResponse.statusCode());
         } catch (IllegalArgumentException | InterruptedException e) {
             fail(e);
         }
 
         try {
-            var logoutResponse = sendPostRequest(serverPort, "/logout", null);
+            var logoutResponse = sendPostRequest(serverPort, LOGOUT_ENDPOINT, null);
             assertEquals(HttpURLConnection.HTTP_OK, logoutResponse.statusCode());
         } catch (IllegalArgumentException | InterruptedException ex) {
             fail(ex);
         }
-
     }
 
-//    private boolean checkIfLoggedIn(HttpClient client, int serverPort) throws IOException, InterruptedException {
-//        HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" +
-//                        serverPort + "/login/check")).build();
-//
-//        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
-//
-//        return resp.statusCode() == HttpURLConnection.HTTP_OK &&
-//                resp.body().contains(Role.USER.toString());
-//    }
+    @Test
+    public void invalidUserLogin_shouldReturn401(int serverPort) throws IOException {
+        String jsonInvalidUsername = getUserLoginDataAsJsonString("someRandomUsername", "yrgoP4ssword");
+        String jsonInvalidPassword = getUserLoginDataAsJsonString("test", "yrgopassword");
+
+        try {
+            var loginResponse = sendPostRequest(serverPort, LOGIN_ENDPOINT, jsonInvalidUsername);
+            assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, loginResponse.statusCode());
+
+            loginResponse = sendPostRequest(serverPort, LOGIN_ENDPOINT, jsonInvalidPassword);
+            assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, loginResponse.statusCode());
+        } catch (IllegalArgumentException | InterruptedException ex) {
+            fail(ex);
+        }
+    }
+
 }
