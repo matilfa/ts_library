@@ -4,6 +4,9 @@ import io.jooby.JoobyTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -11,6 +14,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingExcept
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import se.yrgo.libraryapp.App;
 import se.yrgo.libraryapp.entities.forms.LoginData;
+import se.yrgo.libraryapp.entities.forms.RegisterUserData;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -20,6 +24,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag("integration")
 @Tag("foobar")
@@ -32,6 +37,7 @@ public class LoginLogoutIntegrationTest {
 
     private static final String LOGIN_ENDPOINT = "/login";
     private static final String LOGOUT_ENDPOINT = "/logout";
+    private static final String REGISTER_ENDPOINT = "/register";
 
 
     public static App createApp() {
@@ -91,17 +97,26 @@ public class LoginLogoutIntegrationTest {
         }
     }
 
-    private String getUserLoginDataAsJsonString(String username, String password) throws JsonProcessingException {
-        LoginData loginData = new LoginData(
-                username, password);
+    private String getUserDataAsJsonString(String username, String password) throws JsonProcessingException {
+        LoginData loginData = new LoginData(username, password);
+        return getJsonString(loginData);
+    }
 
+    private String getUserDataAsJsonString(String username,
+                                           String realName,
+                                           String password) throws JsonProcessingException {
+        RegisterUserData userData = new RegisterUserData(username, realName, password);
+        return getJsonString(userData);
+    }
+
+    private <T> String getJsonString(T bodyData) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.writeValueAsString(loginData);
+        return objectMapper.writeValueAsString(bodyData);
     }
 
     @Test
     public void loginAndLogout(int serverPort) throws IOException {
-        String json = getUserLoginDataAsJsonString("test", "yrgoP4ssword");
+        String json = getUserDataAsJsonString("test", "yrgoP4ssword");
 
         try {
             var loginResponse = sendPostRequest(serverPort, LOGIN_ENDPOINT, json);
@@ -120,8 +135,8 @@ public class LoginLogoutIntegrationTest {
 
     @Test
     public void invalidUserLogin_shouldReturn401(int serverPort) throws IOException {
-        String jsonInvalidUsername = getUserLoginDataAsJsonString("someRandomUsername", "yrgoP4ssword");
-        String jsonInvalidPassword = getUserLoginDataAsJsonString("test", "yrgopassword");
+        String jsonInvalidUsername = getUserDataAsJsonString("someRandomUsername", "yrgoP4ssword");
+        String jsonInvalidPassword = getUserDataAsJsonString("test", "yrgopassword");
 
         try {
             var loginResponse = sendPostRequest(serverPort, LOGIN_ENDPOINT, jsonInvalidUsername);
@@ -129,6 +144,30 @@ public class LoginLogoutIntegrationTest {
 
             loginResponse = sendPostRequest(serverPort, LOGIN_ENDPOINT, jsonInvalidPassword);
             assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, loginResponse.statusCode());
+        } catch (IllegalArgumentException | InterruptedException ex) {
+            fail(ex);
+        }
+    }
+
+    @Test
+    public void registerNonExistingUser(int serverPort) throws IOException {
+        String json = getUserDataAsJsonString("newUser", "John Doe", "verysecret");
+
+        try {
+            var resp = sendPostRequest(serverPort, REGISTER_ENDPOINT, json);
+            assertTrue(resp.body().contains("true"));
+        } catch (IllegalArgumentException | InterruptedException ex) {
+            fail(ex);
+        }
+    }
+
+    @Test
+    public void registerExistingUser(int serverPort) throws IOException {
+        String json = getUserDataAsJsonString("test", "unknown", "yrgoP4ssword");
+
+        try {
+            var resp = sendPostRequest(serverPort, REGISTER_ENDPOINT, json);
+            assertTrue(resp.body().contains("false"));
         } catch (IllegalArgumentException | InterruptedException ex) {
             fail(ex);
         }
